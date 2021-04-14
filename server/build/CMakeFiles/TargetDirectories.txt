@@ -1,0 +1,3 @@
+/home/sherman/CLionProjects/COMP3980_TTT_Final/server/build/CMakeFiles/rebuild_cache.dir
+/home/sherman/CLionProjects/COMP3980_TTT_Final/server/build/CMakeFiles/dcserver.dir
+/home/sherman/CLionProjects/COMP3980_TTT_Final/server/build/CMakeFiles/edit_cache.dir

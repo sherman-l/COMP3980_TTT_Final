@@ -1,0 +1,42 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/sherman/CLionProjects/COMP3980_TTT_Final/server/server.c
+sys/types.h
+-
+dc_fsm/fsm.h
+-
+stdbool.h
+-
+arpa/inet.h
+-
+err.h
+-
+netinet/in.h
+-
+stdlib.h
+-
+string.h
+-
+sys/socket.h
+-
+pthread.h
+-
+ctype.h
+-
+socketReadWrite.h
+/home/sherman/CLionProjects/COMP3980_TTT_Final/server/socketReadWrite.h
+
+/home/sherman/CLionProjects/COMP3980_TTT_Final/server/socketReadWrite.h
+string.h
+-
+stdio.h
+-
+unistd.h
+-
+
