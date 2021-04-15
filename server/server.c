@@ -14,6 +14,7 @@
 #include <pthread.h>
 #include <ctype.h>
 #include "socketReadWrite.h"
+#include "generalServerResources.h"
 #include "generalServerFunctions.h"
 
 #define BACKLOG 4
@@ -27,48 +28,13 @@
 #define PAYLOAD_START_INDEX 7
 #define MAX_MSG_SIZE 18
 
-typedef enum
-{
-    SELECTGAME = 0,
-    PLAYGAME
-} GeneralState;
-
-typedef struct Payload{
-    uint8_t protocolVersion;
-    uint8_t** payloadData;
-} Payload;
-
-typedef struct PacketOptions{
-    uint32_t uid;
-    uint8_t reqType;
-    uint8_t reqContext;
-    uint8_t payloadLength;
-    uint8_t protocolVersion;
-} PacketOptions;
-
-typedef struct GameEnvironment {
-    struct dc_fsm_environment common;
-    int players;
-    int gameType;
-} GameEnvironment;
-
-typedef struct SocketEnvironment {
-    int fd;
-    uint8_t** packet;
-    int byteCount;
-    int generalState;
-    struct PacketOptions packetOptions;
-    struct GameEnvironment* gameEnvironment;
-} SocketEnvironment;
-
 SocketEnvironment** addressBook;
 
-typedef struct GameType {
-    uint8_t code;
-    struct dc_fsm_environment fsm;
-} GameType;
-
 int serverConnections = 0;
+
+/** GameEnvironment Lobbies **/
+GameEnvironment* tttLobby;
+GameEnvironment* rpsLobby;
 
 /** Constructors **/
 SocketEnvironment* createSocketEnvironment(int fd);
@@ -83,29 +49,6 @@ void fillOptions(SocketEnvironment *socketEnv);
 void printPacket(SocketEnvironment* socketEnv);
 void clearData(SocketEnvironment *socketEnv);
 void parseRequest(SocketEnvironment* socketEnv);
-void sendResponse(SocketEnvironment *socketEnv);
-
-void sendResponse(SocketEnvironment *socketEnv) {
-    for (int i = 0; i < socketEnv->byteCount; i++) {
-        printf("packet index: %d, value: %d\n", i, *socketEnv->packet[i]);
-    }
-    uint8_t** sendToJeff = malloc(sizeof(uint8_t*) * 10);
-    for(int i = 0; i < 7; i++) {
-        sendToJeff[i] = malloc(sizeof(uint8_t) * 3);
-    }
-    validateGameId(*socketEnv->packet[8], sendToJeff[0]);
-    printf("sendToJeff[0] : %d\n", *sendToJeff[0]);
-    //*sendToJeff[0] = validateGameId(*gameEnv->packet[8]);
-    *sendToJeff[1] = 1;
-    *sendToJeff[2] = 4;
-    for(int i = 3; i < 6; i++){
-        *sendToJeff[i] = 0;
-    }
-    *sendToJeff[6] = (uint8_t) socketEnv->fd;
-    for (int i = 0; i < 7; i++) {
-        write(socketEnv->fd, sendToJeff[i], 1);
-    }
-}
 
 void clearData(SocketEnvironment *socketEnv) {
     for(int i = 0; i < socketEnv->byteCount; i++) {
@@ -116,16 +59,6 @@ void clearData(SocketEnvironment *socketEnv) {
     socketEnv->packetOptions.payloadLength = 0;
     socketEnv->packetOptions.reqContext = 0;
     socketEnv->packetOptions.reqType = 0;
-}
-
-Payload* createPayload(uint8_t payloadLength){
-    Payload* payload = malloc(sizeof(Payload));
-    payload->protocolVersion = 0;
-    payload->payloadData = malloc(sizeof(uint8_t*) * payloadLength);
-    for(int i = 0 ; i < payloadLength; i++) {
-        payload->payloadData[i] = malloc(sizeof(uint8_t));
-    }
-    return payload;
 }
 
 SocketEnvironment* createSocketEnvironment(int fd) {
@@ -225,7 +158,8 @@ int prompt_port(){
 /** Drives the program **/
 int main(int argc, char *argv[])
 {
-
+    tttLobby = createGameEnvironment(TTT);
+    rpsLobby = createGameEnvironment(RPS);
     // waiting for responses + determining whether existing or old connection making a request
     int socket_list[MAX_CLIENTS];
     addressBook = malloc(MAX_CLIENTS*sizeof(SocketEnvironment));
@@ -320,14 +254,24 @@ int main(int argc, char *argv[])
                 if(read(temp, buf, 1) > 0) {
                     printf("Receiving buf: %d\n", *buf);
                     SocketEnvironment* tempSockEnv = getAddressBookEntry(temp);
-                    if(tempSockEnv->generalState == SELECTGAME) {
-                        printf("outside getGameEnvironment\n");
-                        storeData(tempSockEnv, buf);
-                        if(tempSockEnv->byteCount == (PAYLOAD_LENGTH_INDEX + tempSockEnv->packetOptions.payloadLength + 1)) {
-                            sendResponse(tempSockEnv);
+                    storeData(tempSockEnv, buf);
+                    printf("outside getGameEnvironment\n");
+                    if(tempSockEnv->byteCount == (PAYLOAD_LENGTH_INDEX + tempSockEnv->packetOptions.payloadLength + 1)) {
+                        if(tempSockEnv->generalState == SELECTGAME) {
+                            printf("in selectgame action\n");
+                            readMessageType(tempSockEnv);
+                            printf("tempSockEnv gameType: %d", tempSockEnv->gameType);
+                            printf("TTT gametype: %d", TTT);
+                            switch(tempSockEnv->gameType) {
+                                case TTT:
+                                    joinGame(tempSockEnv, &tttLobby);
+                                    break;
+                                case RPS:
+                                    joinGame(tempSockEnv, &rpsLobby);
+                                    break;
+                            }
                         //        clearData(socketEnv, fdIndex);
                         }
-
                         printf("Outside storeData inserted data: %d\n", *tempSockEnv->packet[tempSockEnv->byteCount-1]);
                         printf("Bytecount: %d \n", tempSockEnv->byteCount);
                     }
