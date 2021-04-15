@@ -4,7 +4,6 @@
 //
 
 #include <sys/types.h>
-#include <dc_fsm/fsm.h>
 #include <stdbool.h>
 #include <arpa/inet.h>
 #include <err.h>
@@ -15,6 +14,7 @@
 #include <pthread.h>
 #include <ctype.h>
 #include "socketReadWrite.h"
+#include "generalServerFunctions.h"
 
 #define BACKLOG 4
 #define ROWS 3
@@ -25,30 +25,46 @@
 #define PAYLOAD_BYTE_LENGTH 1
 #define PAYLOAD_LENGTH_INDEX 6
 #define PAYLOAD_START_INDEX 7
-#define MAX_MSG_SIZE 11
+#define MAX_MSG_SIZE 18
 
+typedef enum
+{
+    SELECTGAME = 0,
+    PLAYGAME
+} GeneralState;
+
+
+typedef struct Payload{
+    uint8_t protocolVersion;
+    uint8_t** payloadData;
+} Payload;
 
 typedef struct PacketOptions{
     uint32_t uid;
     uint8_t reqType;
     uint8_t reqContext;
     uint8_t payloadLength;
+    uint8_t protocolVersion;
 } PacketOptions;
 
-/**
- * Struct holding result and state of board
- */
+
+typedef struct PlayerConnection {
+    int playerSocket;
+    uint8_t** packet;
+    int byteCount;
+    int generalState;
+    struct PacketOptions packetOptions;
+} PlayerConnection;
+
 typedef struct GameEnvironment {
     struct dc_fsm_environment common;
     int players;
-    int playerSocket[2];
-    uint8_t** packet;
-    int byteCount;
-    struct PacketOptions packetOptions;
+    struct PlayerConnection playerConnection[2];
 } GameEnvironment;
 
 typedef struct SocketEnvironment {
     int fd;
+    int playerConnectionIndex;
     struct GameEnvironment* gameEnvironment;
 } SocketEnvironment;
 
@@ -65,57 +81,77 @@ int serverConnections = 0;
 GameEnvironment* createGameEnvironment(int fd);
 
 /** Getter **/
-GameEnvironment* getGameEnvironment(int fd);
+SocketEnvironment* getAddressBookEntry(int fd);
 
 /** Helper Functions **/
 int prompt_port();
-GameEnvironment* getGameEnvironment(int fd);
-void storeData(GameEnvironment* gameEnv, uint8_t* data, int fd);
-void fillOptions(GameEnvironment* gameEnv);
+void storeData(GameEnvironment* gameEnv, uint8_t* data, int fdIndex);
+void fillOptions(GameEnvironment* gameEnv, int fdIndex);
 void printPacket(GameEnvironment* gameEnv);
-void clearData(GameEnvironment* gameEnv);
+void clearData(GameEnvironment* gameEnv, int fdIndex);
 void parseRequest(GameEnvironment* gameEnv);
-void sendResponse(GameEnvironment* gameEnv, int fd);
+void sendResponse(GameEnvironment* gameEnv, int fdIndex);
 
-void sendResponse(GameEnvironment* gameEnv, int fd) {
-    uint8_t** sendToJeff = malloc(sizeof(uint8_t*) * 7);
-    for(int i = 0; i < 7; i++) {
-        sendToJeff[i] = malloc(sizeof(uint8_t));
+void sendResponse(GameEnvironment* gameEnv, int fdIndex) {
+    for (int i = 0; i < gameEnv->playerConnection[fdIndex].byteCount; i++) {
+        printf("packet index: %d, value: %d\n", i, *gameEnv->playerConnection[fdIndex].packet[i]);
     }
-    *sendToJeff[0] = (uint8_t) 10;
-    *sendToJeff[1] = (uint8_t) 1;
-    *sendToJeff[2] = (uint8_t) 4;
+    uint8_t** sendToJeff = malloc(sizeof(uint8_t*) * 10);
+    for(int i = 0; i < 7; i++) {
+        sendToJeff[i] = malloc(sizeof(uint8_t) * 3);
+    }
+    printf("validate gameId: %d\n", validateGameId(*gameEnv->playerConnection[fdIndex].packet[8]));
+    write(gameEnv->playerConnection[fdIndex].playerSocket, validateGameId(*gameEnv->playerConnection[fdIndex].packet[8]), 1);
+    //*sendToJeff[0] = validateGameId(*gameEnv->playerConnection[fdIndex].packet[8]);
+    *sendToJeff[1] = 1;
+    *sendToJeff[2] = 4;
     for(int i = 3; i < 6; i++){
         *sendToJeff[i] = 0;
     }
-    *sendToJeff[6] = (uint8_t) fd;
-    for (int i = 0; i < 7; i++) {
-        write(fd, sendToJeff[i], 1);
+    *sendToJeff[6] = (uint8_t) gameEnv->playerConnection[fdIndex].playerSocket;
+    for (int i = 1; i < 7; i++) {
+        write(gameEnv->playerConnection[fdIndex].playerSocket, sendToJeff[i], 1);
     }
 }
 
-void clearData(GameEnvironment* gameEnv) {
-    for(int i = 0; i < gameEnv->byteCount; i++) {
-        gameEnv->packet[i] = 0;
+void clearData(GameEnvironment* gameEnv, int fdIndex) {
+    for(int i = 0; i < gameEnv->playerConnection[fdIndex].byteCount; i++) {
+        gameEnv->playerConnection[fdIndex].packet[i] = 0;
     }
-    gameEnv->byteCount = 0;
-    gameEnv->packetOptions.uid = 0;
-    gameEnv->packetOptions.payloadLength = 0;
-    gameEnv->packetOptions.reqContext = 0;
-    gameEnv->packetOptions.reqType = 0;
+    gameEnv->playerConnection[fdIndex].byteCount = 0;
+    gameEnv->playerConnection[fdIndex].packetOptions.uid = 0;
+    gameEnv->playerConnection[fdIndex].packetOptions.payloadLength = 0;
+    gameEnv->playerConnection[fdIndex].packetOptions.reqContext = 0;
+    gameEnv->playerConnection[fdIndex].packetOptions.reqType = 0;
+}
+
+Payload* createPayload(uint8_t payloadLength){
+    Payload* payload = malloc(sizeof(Payload));
+    payload->protocolVersion = 0;
+    payload->payloadData = malloc(sizeof(uint8_t*) * payloadLength);
+    for(int i = 0 ; i < payloadLength; i++) {
+        payload->payloadData[i] = malloc(sizeof(uint8_t));
+    }
+    return payload;
 }
 
 GameEnvironment* createGameEnvironment(int fd) {
     printf("inside createGameEnvironment\n");
     GameEnvironment* gameEnvironment = malloc(sizeof(struct GameEnvironment));
-    gameEnvironment->playerSocket[0] = fd;
+    gameEnvironment->playerConnection[0].playerSocket = fd;
     gameEnvironment->players = 1;
-    gameEnvironment->byteCount = 0;
-    gameEnvironment->packet = malloc(sizeof(uint8_t*) * MAX_MSG_SIZE);
-    gameEnvironment->packetOptions.uid = 0;
-    gameEnvironment->packetOptions.reqType = 0;
-    gameEnvironment->packetOptions.reqContext = 0;
-    gameEnvironment->packetOptions.payloadLength = 0;
+    for(int i = 0; i < 2; i++) {
+        gameEnvironment->playerConnection[i].byteCount = 0;
+        gameEnvironment->playerConnection[i].packet = malloc(sizeof(uint8_t*) * MAX_MSG_SIZE);
+        for(int j = 0; j < MAX_MSG_SIZE; j++) {
+            gameEnvironment->playerConnection[i].packet[j] = malloc(sizeof(uint8_t));
+        }
+        gameEnvironment->playerConnection[i].packetOptions.uid = 0;
+        gameEnvironment->playerConnection[i].packetOptions.reqType = 0;
+        gameEnvironment->playerConnection[i].packetOptions.reqContext = 0;
+        gameEnvironment->playerConnection[i].packetOptions.payloadLength = 0;
+        gameEnvironment->playerConnection[i].generalState = SELECTGAME;
+    }
     return gameEnvironment;
 }
 
@@ -123,42 +159,49 @@ void printPacket(GameEnvironment* gameEnv) {
 
 }
 
-void fillOptions(GameEnvironment* gameEnv) {
+void fillOptions(GameEnvironment* gameEnv, int fdIndex) {
     int trackIndex = 0;
     for(int i = 0; i < UID_BYTE_LENGTH; i++, trackIndex++) {
-        gameEnv->packetOptions.uid += *gameEnv->packet[trackIndex];
+        gameEnv->playerConnection[fdIndex].packetOptions.uid += *gameEnv->playerConnection[fdIndex].packet[trackIndex];
         if (i < UID_BYTE_LENGTH-1) {
-            gameEnv->packetOptions.uid <<= 8;
+            gameEnv->playerConnection[fdIndex].packetOptions.uid <<= 8;
         }
     }
-    gameEnv->packetOptions.reqType = *gameEnv->packet[trackIndex++];
-    gameEnv->packetOptions.reqContext = *gameEnv->packet[trackIndex++];
-    gameEnv->packetOptions.payloadLength = *gameEnv->packet[trackIndex];
+    gameEnv->playerConnection[fdIndex].packetOptions.reqType = *gameEnv->playerConnection[fdIndex].packet[trackIndex++];
+    gameEnv->playerConnection[fdIndex].packetOptions.reqContext = *gameEnv->playerConnection[fdIndex].packet[trackIndex++];
+    gameEnv->playerConnection[fdIndex].packetOptions.payloadLength = *gameEnv->playerConnection[fdIndex].packet[trackIndex++];
+    gameEnv->playerConnection[fdIndex].packetOptions.protocolVersion = *gameEnv->playerConnection[fdIndex].packet[trackIndex];
 }
 
-void storeData(GameEnvironment* gameEnv, uint8_t* data, int fd) {
+void storeData(GameEnvironment* gameEnv, uint8_t* data, int fdIndex) {
  //   printf("Beginning of storeData: %d, ByteCount: %d\n", *data, gameEnv->byteCount);
-    if (gameEnv->byteCount < (PAYLOAD_LENGTH_INDEX + gameEnv->packetOptions.payloadLength + 1)) {
-        gameEnv->packet[gameEnv->byteCount] = data;
-        printf("In storeData, storing: %d\n", *gameEnv->packet[gameEnv->byteCount]);
-        (gameEnv->byteCount)++;
+    int numBytes = gameEnv->playerConnection[fdIndex].byteCount;
+    int maxLength = (gameEnv->playerConnection[fdIndex].packetOptions.payloadLength == 0) ?
+            PAYLOAD_LENGTH_INDEX + 2
+            : PAYLOAD_LENGTH_INDEX + gameEnv->playerConnection[fdIndex].packetOptions.payloadLength + 1;
+    if (gameEnv->playerConnection[fdIndex].byteCount < maxLength) {
+        *gameEnv->playerConnection[fdIndex].packet[numBytes] = *data;
+        printf("In storeData, storing: %d\n", *gameEnv->playerConnection[fdIndex].packet[numBytes]);
+        (gameEnv->playerConnection[fdIndex].byteCount)++;
     }
-    if(gameEnv->byteCount == (PAYLOAD_LENGTH_INDEX + 1)) {
-        fillOptions(gameEnv);
+
+
+    if(gameEnv->playerConnection[fdIndex].byteCount == (PAYLOAD_LENGTH_INDEX + 2)) {
+        fillOptions(gameEnv, fdIndex);
     }
-    if(gameEnv->byteCount == (PAYLOAD_LENGTH_INDEX + gameEnv->packetOptions.payloadLength + 1)) {
-        sendResponse(gameEnv, fd);
-        clearData(gameEnv);
+    if(gameEnv->playerConnection[fdIndex].byteCount == (PAYLOAD_LENGTH_INDEX + gameEnv->playerConnection[fdIndex].packetOptions.payloadLength + 1)) {
+        sendResponse(gameEnv, fdIndex);
+//        clearData(gameEnv, fdIndex);
     }
 }
 
 
-GameEnvironment* getGameEnvironment(int fd) {
-    printf("inside getGameEnvironment\n");
+SocketEnvironment* getAddressBookEntry(int fd) {
+    printf("inside getAddressBook\n");
     for(int i = 0; i < serverConnections; i++) {
         if(addressBook[i].fd == fd) {
             printf("gameEnvironment found for fd: %d", fd);
-            return addressBook[i].gameEnvironment;
+            return &addressBook[i];
         }
     }
     return NULL;
@@ -274,10 +317,12 @@ int main(int argc, char *argv[])
                     addressBook[i].fd = cfd;
                     if (i % 2 == 0) {
                         addressBook[i].gameEnvironment = createGameEnvironment(cfd);
+                        addressBook[i].playerConnectionIndex = 0;
                     } else {
                         addressBook[i].gameEnvironment = addressBook[i-1].gameEnvironment;
                         addressBook[i].gameEnvironment->players += 1;
-                        addressBook[i].gameEnvironment->playerSocket[1] = cfd;
+                        addressBook[i].playerConnectionIndex = 1;
+                        addressBook[i].gameEnvironment->playerConnection[1].playerSocket = cfd;
                     }
                     serverConnections++;
                     break;
@@ -292,11 +337,15 @@ int main(int argc, char *argv[])
             {
                 if(read(temp, buf, 1) > 0) {
                     printf("Receiving buf: %d\n", *buf);
-                    GameEnvironment* tempEnv = getGameEnvironment(temp);
-                    printf("outside getGameEnvironment\n");
-                    storeData(tempEnv, buf, temp);
-                    printf("Outside storeData inserted data: %d\n", *tempEnv->packet[tempEnv->byteCount-1]);
-                    printf("Bytecount: %d \n", tempEnv->byteCount);
+                    SocketEnvironment* tempSockEnv = getAddressBookEntry(temp);
+                    GameEnvironment* tempEnv = tempSockEnv->gameEnvironment;
+                    int fdIndex = tempSockEnv->playerConnectionIndex;
+                    if(tempEnv->playerConnection[fdIndex].generalState == SELECTGAME) {
+                        printf("outside getGameEnvironment\n");
+                        storeData(tempEnv, buf, fdIndex);
+                        printf("Outside storeData inserted data: %d\n", *tempEnv->playerConnection[fdIndex].packet[tempEnv->playerConnection[fdIndex].byteCount-1]);
+                        printf("Bytecount: %d \n", tempEnv->playerConnection[fdIndex].byteCount);
+                    }
                 }
             }
         }
