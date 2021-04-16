@@ -26,7 +26,6 @@
 #define PAYLOAD_BYTE_LENGTH 1
 #define PAYLOAD_LENGTH_INDEX 6
 #define PAYLOAD_START_INDEX 7
-#define MAX_MSG_SIZE 18
 
 SocketEnvironment** addressBook;
 
@@ -257,23 +256,30 @@ int main(int argc, char *argv[])
                     storeData(tempSockEnv, buf);
                     printf("outside getGameEnvironment\n");
                     if(tempSockEnv->byteCount == (PAYLOAD_LENGTH_INDEX + tempSockEnv->packetOptions.payloadLength + 1)) {
-                        if(tempSockEnv->generalState == SELECTGAME) {
-                            printf("in selectgame action\n");
-                            readMessageType(tempSockEnv);
-                            printf("tempSockEnv gameType: %d", tempSockEnv->gameType);
-                            printf("TTT gametype: %d", TTT);
-                            switch(tempSockEnv->gameType) {
-                                case TTT:
-                                    joinGame(tempSockEnv, &tttLobby);
-                                    break;
-                                case RPS:
-                                    joinGame(tempSockEnv, &rpsLobby);
-                                    break;
-                            }
-                        //        clearData(socketEnv, fdIndex);
+                        switch(tempSockEnv->generalState) {
+                            case SELECTGAME:
+                                printf("in selectgame action\n");
+                                readMessageType(tempSockEnv);
+                                printf("tempSockEnv gameType: %d", tempSockEnv->gameType);
+                                printf("TTT gametype: %d", TTT);
+                                switch(tempSockEnv->gameType) {
+                                    case TTT:
+                                        joinGame(tempSockEnv, &tttLobby);
+                                        break;
+                                    case RPS:
+                                        joinGame(tempSockEnv, &rpsLobby);
+                                        break;
+                                }
+                                break;
+                            case PLAYGAME:
+                                printf("in playgame\n");
+                                readMessageType(tempSockEnv);
+
                         }
                         printf("Outside storeData inserted data: %d\n", *tempSockEnv->packet[tempSockEnv->byteCount-1]);
                         printf("Bytecount: %d \n", tempSockEnv->byteCount);
+                        clearPacket(tempSockEnv);
+                        printf("bytecount after clear: %d\n", tempSockEnv->byteCount);
                     }
                 }
             }

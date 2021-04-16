@@ -18,6 +18,7 @@ void makeMove(SocketEnvironment* socketEnv);
 void invalidRequest(SocketEnvironment* socketEnv);
 void joinGame(SocketEnvironment* socketEnv, GameEnvironment** lobby);
 void startGame(GameEnvironment* gameEnv);
+void clearPacket(SocketEnvironment* socketEnv);
 void acknowledgeRequest(SocketEnvironment* socketEnv) {
     uint8_t** response = malloc(sizeof(uint8_t*) * 4);
     for(int i = 0; i < 4; i++) {
@@ -29,6 +30,7 @@ void acknowledgeRequest(SocketEnvironment* socketEnv) {
     for (int i = 0; i < 3; i++) {
         write(socketEnv->fd, response[i], 1);
     }
+    free(response);
 }
 
 void confFunction(SocketEnvironment* socketEnv) {
@@ -50,6 +52,7 @@ void metaFunction(SocketEnvironment* socketEnv) {
 }
 
 void gameFunction(SocketEnvironment* socketEnv) {
+    printf("in Game Function\n");
     switch (socketEnv->packetOptions.reqContext) {
         case MAKMOV:
             makeMove(socketEnv);
@@ -64,14 +67,16 @@ void invalidRequest(SocketEnvironment* socketEnv) {
 }
 
 void makeMove(SocketEnvironment* socketEnv) {
+    printf("In make Move\n");
     if(socketEnv->gameEnvironment->gameType == TTT) {
         if(TTTMakeMove(socketEnv)) {
-
+            acknowledgeRequest(socketEnv);
             if(socketEnv->gameEnvironment->end) {
-
+                TTTnotifyEnd(socketEnv);
             } else {
-                TTTnotifyOpponent(socketEnv);
+                TTTnotifyOpponentMove(socketEnv);
             }
+
         } else {
             invalidRequest(socketEnv);
         }
@@ -117,6 +122,7 @@ void startGame(GameEnvironment* gameEnv) {
             write(gameEnv->playerSocket[1], response[i], 1);
         }
     }
+    free(response);
 }
 
 void readMessageType(SocketEnvironment* socketEnv) {
@@ -143,6 +149,7 @@ GameEnvironment* createGameEnvironment(int gameType){
     GameEnvironment* gameEnvironment = malloc(sizeof(GameEnvironment));
     gameEnvironment->players = 0;
     gameEnvironment->gameType = gameType;
+    gameEnvironment->end = false;
     switch(gameType) {
         case TTT:
             gameEnvironment->board = malloc(sizeof(int) * TTT_BOARD_SIZE);
@@ -159,7 +166,6 @@ GameEnvironment* createGameEnvironment(int gameType){
     }
     return gameEnvironment;
 }
-
 
 void validateGameId(uint8_t gameId, uint8_t *response, int* gameType) {
     int index = 0;
@@ -201,5 +207,18 @@ void confirmRuleset(SocketEnvironment *socketEnv) {
     for (int i = 0; i < 7; i++) {
         write(socketEnv->fd, response[i], 1);
     }
+    free(response);
 }
+
+void clearPacket(SocketEnvironment* socketEnv) {
+    for(int i = 0; i < MAX_MSG_SIZE; i++){
+        *socketEnv->packet[i] = 0;
+        socketEnv->byteCount = 0;
+        socketEnv->packetOptions.reqContext = 0;
+        socketEnv->packetOptions.uid = 0;
+        socketEnv->packetOptions.reqType = 0;
+        socketEnv->packetOptions.payloadLength = 0;
+    }
+}
+
 #endif //DCFSM_GENERALSERVERFUNCTIONS_H

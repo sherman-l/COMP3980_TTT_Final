@@ -7,7 +7,7 @@
 #define COMP3980_TTT_FINAL_GENERALSERVERRESOURCES_H
 #define SUCCESS_CODE 10
 #define INVALID_TYPE 32
-#define TTT_BOARD_SIZE 9
+#define MAX_MSG_SIZE 18
 
 typedef struct PacketOptions{
     uint32_t uid;
