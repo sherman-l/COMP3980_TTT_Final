@@ -252,17 +252,12 @@ int main(int argc, char *argv[])
             if(FD_ISSET(temp, &rfds))
             {
                 if(read(temp, buf, 1) > 0) {
-                    printf("Receiving buf: %d\n", *buf);
                     SocketEnvironment* tempSockEnv = getAddressBookEntry(temp);
                     storeData(tempSockEnv, buf);
-                    printf("outside getGameEnvironment\n");
                     if(tempSockEnv->byteCount == (PAYLOAD_LENGTH_INDEX + tempSockEnv->packetOptions.payloadLength + 1)) {
                         switch(tempSockEnv->generalState) {
                             case SELECTGAME:
-                                printf("in selectgame action\n");
                                 readMessageType(tempSockEnv);
-                                printf("tempSockEnv gameType: %d", tempSockEnv->gameType);
-                                printf("TTT gametype: %d", TTT);
                                 switch(tempSockEnv->gameType) {
                                     case TTT:
                                         joinGame(tempSockEnv, &tttLobby);
@@ -273,34 +268,21 @@ int main(int argc, char *argv[])
                                 }
                                 break;
                             case PLAYGAME:
-                                printf("in playgame\n");
                                 readMessageType(tempSockEnv);
 
                         }
-                        printf("Outside storeData inserted data: %d\n", *tempSockEnv->packet[tempSockEnv->byteCount-1]);
-                        printf("Bytecount: %d \n", tempSockEnv->byteCount);
                         clearPacket(tempSockEnv);
-                        printf("bytecount after clear: %d\n", tempSockEnv->byteCount);
                     }
                 }
             }
             if(FD_ISSET(udpsock,&rfds)) {
-                printf("recvd udp message: \n");
                 struct sockaddr_in cliaddr;
                 int len = sizeof(cliaddr);
                 numByte = recvfrom(udpsock, udpBuf, DATAGRAM_SIZE, 0, (struct sockaddr *) &cliaddr, &len);
-                printf("numBytes received %ld\n", numByte);
-                for(int i = 0; i < 8; i++) {
-                    printf("byte no: %d, val: %d\n", i, udpBuf[i]);
-                }
-                printf("udpsock: %d\n", udpsock);
                 Datagram* datagram = createDatagram(udpBuf);
-                printf("ordering: %d, uid: %d\n", datagram->ordering, datagram->uid);
                 SocketEnvironment* sockEnv = getAddressBookEntry(datagram->uid);
                 int sourceIndex = (sockEnv->gameEnvironment->playerSocket[0] == datagram->uid) ? 0 : 1;
                 int destIndex = (sourceIndex == 0) ? 1 : 0;
-                printf("Source Index: %d, source fd: %d\n", sourceIndex, sockEnv->gameEnvironment->playerSocket[sourceIndex]);
-                printf("Destination Index: %d, Destination fd: %d\n", destIndex, sockEnv->gameEnvironment->playerSocket[destIndex]);
                 if (datagram->ordering == 0) {
                     sockEnv->gameEnvironment->playerUdpSocket[sourceIndex] = udpsock;
                     sockEnv->gameEnvironment->playerUdpSockAddr[sourceIndex] = cliaddr;
@@ -309,11 +291,11 @@ int main(int argc, char *argv[])
                 if(sockEnv->gameEnvironment->playerUdpSocket[0] == -1 || sockEnv->gameEnvironment->playerUdpSocket[1] == -1) {
                     continue;
                 }
-                printf("source UDP socket: %d, dest UDP socket: %d\n", sockEnv->gameEnvironment->playerUdpSocket[sourceIndex], sockEnv->gameEnvironment->playerUdpSocket[destIndex]);
-                sendto(sockEnv->gameEnvironment->playerUdpSocket[destIndex], datagram->payload, 5000, 0, (struct sockaddr*) &sockEnv->gameEnvironment->playerUdpSockAddr[destIndex], sockEnv->gameEnvironment->udpSockAddrLen[destIndex]);
-//                for(int i = 0; i < 5000; i++){
-//                    printf("%d", datagram->payload[i]);
-//                }
+                if (datagram->ordering >= sockEnv->gameEnvironment->nextUdpDatagram[sourceIndex]) {
+                    sockEnv->gameEnvironment->nextUdpDatagram[sourceIndex] = (datagram->ordering)+1;
+                    sendto(sockEnv->gameEnvironment->playerUdpSocket[destIndex], (datagram->payload), 5000, 0, (struct sockaddr*) &sockEnv->gameEnvironment->playerUdpSockAddr[destIndex], sockEnv->gameEnvironment->udpSockAddrLen[destIndex]);
+                }
+                free(datagram);
             }
         }
     }
