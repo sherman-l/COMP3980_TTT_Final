@@ -11,6 +11,32 @@
     android:id="@+id/game_layout"
     tools:context=".RPSActivity">
 
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/game_startAudio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:gravity="center"
+            android:onClick="startAudio"
+            android:text="@string/game_startAudio" />
+
+        <Button
+            android:id="@+id/game_endAudio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:gravity="center"
+            android:onClick="endAudio"
+            android:text="@string/game_endAudio" />
+
+    </LinearLayout>
+
     <Button
         android:id="@+id/game_dc"
         android:layout_width="wrap_content"

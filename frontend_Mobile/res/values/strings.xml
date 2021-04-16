@@ -9,6 +9,7 @@
     <!-- keys used throughout the code -->
     <string name="connKey">connObj</string>
     <string name="ipKey">ip</string>
+    <string name="portKey">port</string>
 
     <!-- game screen -->
     <array name="game_list">
@@ -23,4 +24,8 @@
     <string name="game_msg">Select your game from the list below</string>
     <string name="game_submit">Submit</string>
     <string name="game_disconnect">Disconnect</string>
+    <string name="game_startAudio">Start Mic</string>
+    <string name="game_endAudio">End Mic</string>
+    <string name="game_listenAudio">Listen</string>
+    <string name="game_muteAudio">Mute</string>
 </resources>

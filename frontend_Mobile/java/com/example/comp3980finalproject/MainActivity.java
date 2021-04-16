@@ -36,13 +36,14 @@ public class MainActivity extends AppCompatActivity {
         EditText portET = findViewById(R.id.home_port);
         if (!hostIPET.getText().toString().equals("")) hostIP = hostIPET.getText().toString();
         if (!portET.getText().toString().equals("")) port = Integer.parseInt(portET.getText().toString());
-
+        Log.d("state", "hostIP = " + hostIP + ", port = " + port);
         Connection conn = new Connection(port, hostIP);
         conn.connect();
 
         Intent i = new Intent(this, RPSActivity.class);
         i.putExtra(getResources().getString(R.string.connKey), conn);
         i.putExtra(getResources().getString(R.string.ipKey), hostIP);
+        i.putExtra(getResources().getString(R.string.portKey), port);
         startActivity(i);
     }
 }
