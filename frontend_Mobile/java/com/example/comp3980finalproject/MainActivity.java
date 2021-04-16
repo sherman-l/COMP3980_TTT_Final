@@ -35,9 +35,7 @@ public class MainActivity extends AppCompatActivity {
         EditText hostIPET = findViewById(R.id.home_ip);
         EditText portET = findViewById(R.id.home_port);
         if (!hostIPET.getText().toString().equals("")) hostIP = hostIPET.getText().toString();
-        else hostIP = "50.92.70.107";
         if (!portET.getText().toString().equals("")) port = Integer.parseInt(portET.getText().toString());
-        else port = 13541;
 
         Connection conn = new Connection(port, hostIP);
         conn.connect();
