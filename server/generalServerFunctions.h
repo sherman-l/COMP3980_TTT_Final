@@ -3,6 +3,7 @@
 //
 #include <dc_fsm/fsm.h>
 #include "TTTFunctions.h"
+#include "RPSFunctions.h"
 
 #ifndef DCFSM_GENERALSERVERFUNCTIONS_H
 #define DCFSM_GENERALSERVERFUNCTIONS_H
@@ -20,8 +21,8 @@ void joinGame(SocketEnvironment* socketEnv, GameEnvironment** lobby);
 void startGame(GameEnvironment* gameEnv);
 void clearPacket(SocketEnvironment* socketEnv);
 void acknowledgeRequest(SocketEnvironment* socketEnv) {
-    uint8_t** response = malloc(sizeof(uint8_t*) * 4);
-    for(int i = 0; i < 4; i++) {
+    uint8_t** response = malloc(sizeof(uint8_t*) * 3);
+    for(int i = 0; i < 3; i++) {
         response[i] = malloc(sizeof(uint8_t) * 1);
     }
     *response[0] = (uint8_t) 10;
@@ -81,6 +82,17 @@ void makeMove(SocketEnvironment* socketEnv) {
             invalidRequest(socketEnv);
         }
     }
+    if(socketEnv->gameEnvironment->gameType == RPS) {
+        if(RPSMakeMove(socketEnv)) {
+            acknowledgeRequest(socketEnv);
+            if(socketEnv->gameEnvironment->end) {
+                RPSResult(socketEnv);
+                RPSNotifyEnd(socketEnv);
+            }
+        } else {
+            invalidRequest(socketEnv);
+        }
+    }
 }
 
 void joinGame(SocketEnvironment* socketEnv, GameEnvironment** lobby) {
@@ -116,7 +128,6 @@ void startGame(GameEnvironment* gameEnv) {
         }
     } else if (gameEnv->gameType == RPS) {
         *response[2] = (uint8_t)0;
-        *response[3] = (uint8_t)0;
         for(int i = 0; i < 3; i++) {
             write(gameEnv->playerSocket[0], response[i], 1);
             write(gameEnv->playerSocket[1], response[i], 1);

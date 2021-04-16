@@ -9,11 +9,11 @@
 #include <err.h>
 #include <netinet/in.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <pthread.h>
+#include <stdio.h>
 #include <ctype.h>
-#include "socketReadWrite.h"
 #include "generalServerResources.h"
 #include "generalServerFunctions.h"
 
@@ -21,7 +21,7 @@
 #define ROWS 3
 #define COLUMNS 3
 
-#define MAX_CLIENTS 10
+#define MAX_CLIENTS 40
 #define UID_BYTE_LENGTH 4
 #define PAYLOAD_BYTE_LENGTH 1
 #define PAYLOAD_LENGTH_INDEX 6

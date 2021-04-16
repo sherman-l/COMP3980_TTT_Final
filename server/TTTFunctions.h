@@ -100,10 +100,10 @@ void TTTnotifyEnd(SocketEnvironment* sockEnv) {
     *response[1] = (uint8_t) 3;
     *response[2] = (uint8_t) 2;
     switch(sockEnv->gameEnvironment->result) {
-        case PLAYERONE:
+        case (PLAYERONE+1):
             *response[3] = WIN;
             break;
-        case PLAYERTWO:
+        case (PLAYERTWO+1):
             *response[3] = LOSS;
             break;
         default:

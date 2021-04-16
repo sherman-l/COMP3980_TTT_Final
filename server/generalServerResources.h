@@ -8,6 +8,7 @@
 #define SUCCESS_CODE 10
 #define INVALID_TYPE 32
 #define MAX_MSG_SIZE 18
+#define BUF_SIZE 1000
 
 typedef struct PacketOptions{
     uint32_t uid;
