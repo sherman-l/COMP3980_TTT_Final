@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:focusable="true"
+    android:gravity="center"
+    android:focusableInTouchMode="true"
+    android:orientation="vertical"
+    android:id="@+id/game_layout"
+    tools:context=".RPSActivity">
+
+    <Button
+        android:id="@+id/game_dc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:gravity="center"
+        android:onClick="disconnect"
+        android:text="@string/game_disconnect" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/title"
+        android:layout_marginTop="20dp"
+        android:textColor="#000000"
+        android:textSize="20sp"
+        android:gravity="center"
+        android:text="" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:textColor="#000000"
+        android:textSize="20sp"
+        android:gravity="center"
+        android:text="@string/game_msg" />
+
+    <Spinner
+        android:id="@+id/spinnerGames"
+        android:textSize="20sp"
+        android:layout_gravity="center"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:entries="@array/game_list" />
+
+    <Button
+        android:id="@+id/game_submit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:gravity="center"
+        android:onClick="submit"
+        android:text="@string/game_submit" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:textColor="#000000"
+        android:textSize="20sp"
+        android:gravity="center"
+        android:id="@+id/game_msg"
+        android:text="" />
+
+</LinearLayout>

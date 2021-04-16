@@ -5,4 +5,22 @@
     <string name="home_ipHint">Enter the Server ip here:</string>
     <string name="home_portHint">Enter the Server port:</string>
     <string name="home_conn">Connect</string>
+
+    <!-- keys used throughout the code -->
+    <string name="connKey">connObj</string>
+    <string name="ipKey">ip</string>
+
+    <!-- game screen -->
+    <array name="game_list">
+        <item>RPS</item>
+        <item>TTT</item>
+    </array>
+    <array name="rps_options">
+        <item>Rock</item>
+        <item>Paper</item>
+        <item>Scissors</item>
+    </array>
+    <string name="game_msg">Select your game from the list below</string>
+    <string name="game_submit">Submit</string>
+    <string name="game_disconnect">Disconnect</string>
 </resources>
