@@ -8,6 +8,8 @@
 #ifndef DCFSM_GENERALSERVERFUNCTIONS_H
 #define DCFSM_GENERALSERVERFUNCTIONS_H
 GameEnvironment* createGameEnvironment(int gameType);
+Datagram* createDatagram(char* buf);
+
 
 void validateGameId(uint8_t gameId, uint8_t *response, int* gameType);
 void confirmRuleset(SocketEnvironment *socketEnv);
@@ -156,11 +158,38 @@ void readMessageType(SocketEnvironment* socketEnv) {
     }
 }
 
+Datagram* createDatagram(char* buf) {
+    Datagram* datagram = malloc(sizeof(datagram));
+    datagram->payload = malloc(5000);
+    for(int i = 0; i < 4; i++) {
+        if (i == 3) {
+            datagram->ordering += buf[i];
+        } else {
+            datagram->ordering += buf[i];
+            datagram->ordering <<= 8;
+        }
+    }
+    for(int i = 4; i < 8; i++) {
+        if (i == 7) {
+            datagram->uid += buf[i];
+        } else {
+            datagram->uid += buf[i];
+            datagram->uid <<= 8;
+        }
+    }
+    memcpy(datagram->payload, &buf[8], 5000);
+    return datagram;
+}
+
 GameEnvironment* createGameEnvironment(int gameType){
     GameEnvironment* gameEnvironment = malloc(sizeof(GameEnvironment));
     gameEnvironment->players = 0;
     gameEnvironment->gameType = gameType;
     gameEnvironment->end = false;
+    gameEnvironment->playerUdpSocket[0] = -1;
+    gameEnvironment->playerUdpSocket[1] = -1;
+    gameEnvironment->nextUdpDatagram[0] = 0;
+    gameEnvironment->nextUdpDatagram[1] = 0;
     switch(gameType) {
         case TTT:
             gameEnvironment->board = malloc(sizeof(int) * TTT_BOARD_SIZE);

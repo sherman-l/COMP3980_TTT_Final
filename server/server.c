@@ -18,8 +18,7 @@
 #include "generalServerFunctions.h"
 
 #define BACKLOG 4
-#define ROWS 3
-#define COLUMNS 3
+#define DATAGRAM_SIZE 5008
 
 #define MAX_CLIENTS 40
 #define UID_BYTE_LENGTH 4
@@ -30,6 +29,7 @@
 SocketEnvironment** addressBook;
 
 int serverConnections = 0;
+ssize_t numByte;
 
 /** GameEnvironment Lobbies **/
 GameEnvironment* tttLobby;
@@ -43,21 +43,16 @@ SocketEnvironment* getAddressBookEntry(int fd);
 
 /** Helper Functions **/
 int prompt_port();
+int max(int x, int y);
 void storeData(SocketEnvironment *socketEnv, uint8_t *data);
 void fillOptions(SocketEnvironment *socketEnv);
-void printPacket(SocketEnvironment* socketEnv);
-void clearData(SocketEnvironment *socketEnv);
-void parseRequest(SocketEnvironment* socketEnv);
 
-void clearData(SocketEnvironment *socketEnv) {
-    for(int i = 0; i < socketEnv->byteCount; i++) {
-        socketEnv->packet[i] = 0;
-    }
-    socketEnv->byteCount = 0;
-    socketEnv->packetOptions.uid = 0;
-    socketEnv->packetOptions.payloadLength = 0;
-    socketEnv->packetOptions.reqContext = 0;
-    socketEnv->packetOptions.reqType = 0;
+int max(int x, int y)
+{
+    if (x > y)
+        return x;
+    else
+        return y;
 }
 
 SocketEnvironment* createSocketEnvironment(int fd) {
@@ -76,10 +71,6 @@ SocketEnvironment* createSocketEnvironment(int fd) {
     socketEnvironment->generalState = SELECTGAME;
 
     return socketEnvironment;
-}
-
-void printPacket(SocketEnvironment* socketEnv) {
-
 }
 
 void fillOptions(SocketEnvironment *socketEnv) {
@@ -173,13 +164,17 @@ int main(int argc, char *argv[])
     int fdmax;
     int cfd;
     uint8_t* buf = malloc(sizeof(uint8_t));
-
+    char* udpBuf = malloc(DATAGRAM_SIZE);
 
     int one = 1;
     struct sockaddr_in svr_addr;
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0)
         err(1, "can't open socket");
+
+    int udpsock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (udpsock < 0)
+        err(1, "can't open udpsocket");
 
     int port = prompt_port();
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
@@ -188,6 +183,10 @@ int main(int argc, char *argv[])
     svr_addr.sin_port = htons(port);
     if (bind(sock, (struct sockaddr *) &svr_addr, sizeof(svr_addr)) == -1) {
         close(sock);
+        err(1, "Can't bind");
+    }
+    if (bind(udpsock, (struct sockaddr *) &svr_addr, sizeof(svr_addr)) == -1) {
+        close(udpsock);
         err(1, "Can't bind");
     }
 
@@ -202,7 +201,8 @@ int main(int argc, char *argv[])
 
         FD_ZERO(&rfds);
         FD_SET(sock, &rfds);
-        fdmax = sock;
+        FD_SET(udpsock, &rfds);
+        fdmax = max(sock, udpsock);
 
         for (int i = 0; i < MAX_CLIENTS ; i++) {
             temp = socket_list[i];
@@ -220,6 +220,7 @@ int main(int argc, char *argv[])
             perror("select");
             exit(EXIT_FAILURE);
         }
+        // TCP Socket Readable
         if(FD_ISSET(sock, &rfds)) {
             if((cfd = accept(sock, NULL, NULL)) < 0) {
                 perror("accept error");
@@ -282,6 +283,37 @@ int main(int argc, char *argv[])
                         printf("bytecount after clear: %d\n", tempSockEnv->byteCount);
                     }
                 }
+            }
+            if(FD_ISSET(udpsock,&rfds)) {
+                printf("recvd udp message: \n");
+                struct sockaddr_in cliaddr;
+                int len = sizeof(cliaddr);
+                numByte = recvfrom(udpsock, udpBuf, DATAGRAM_SIZE, 0, (struct sockaddr *) &cliaddr, &len);
+                printf("numBytes received %ld\n", numByte);
+                for(int i = 0; i < 8; i++) {
+                    printf("byte no: %d, val: %d\n", i, udpBuf[i]);
+                }
+                printf("udpsock: %d\n", udpsock);
+                Datagram* datagram = createDatagram(udpBuf);
+                printf("ordering: %d, uid: %d\n", datagram->ordering, datagram->uid);
+                SocketEnvironment* sockEnv = getAddressBookEntry(datagram->uid);
+                int sourceIndex = (sockEnv->gameEnvironment->playerSocket[0] == datagram->uid) ? 0 : 1;
+                int destIndex = (sourceIndex == 0) ? 1 : 0;
+                printf("Source Index: %d, source fd: %d\n", sourceIndex, sockEnv->gameEnvironment->playerSocket[sourceIndex]);
+                printf("Destination Index: %d, Destination fd: %d\n", destIndex, sockEnv->gameEnvironment->playerSocket[destIndex]);
+                if (datagram->ordering == 0) {
+                    sockEnv->gameEnvironment->playerUdpSocket[sourceIndex] = udpsock;
+                    sockEnv->gameEnvironment->playerUdpSockAddr[sourceIndex] = cliaddr;
+                    sockEnv->gameEnvironment->udpSockAddrLen[sourceIndex] = len;
+                }
+                if(sockEnv->gameEnvironment->playerUdpSocket[0] == -1 || sockEnv->gameEnvironment->playerUdpSocket[1] == -1) {
+                    continue;
+                }
+                printf("source UDP socket: %d, dest UDP socket: %d\n", sockEnv->gameEnvironment->playerUdpSocket[sourceIndex], sockEnv->gameEnvironment->playerUdpSocket[destIndex]);
+                sendto(sockEnv->gameEnvironment->playerUdpSocket[destIndex], datagram->payload, 5000, 0, (struct sockaddr*) &sockEnv->gameEnvironment->playerUdpSockAddr[destIndex], sockEnv->gameEnvironment->udpSockAddrLen[destIndex]);
+//                for(int i = 0; i < 5000; i++){
+//                    printf("%d", datagram->payload[i]);
+//                }
             }
         }
     }

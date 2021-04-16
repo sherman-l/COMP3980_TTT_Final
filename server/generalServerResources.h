@@ -10,6 +10,12 @@
 #define MAX_MSG_SIZE 18
 #define BUF_SIZE 1000
 
+typedef struct Datagram {
+    uint32_t ordering;
+    uint32_t uid;
+    char* payload;
+} Datagram;
+
 typedef struct PacketOptions{
     uint32_t uid;
     uint8_t reqType;
@@ -23,6 +29,10 @@ typedef struct GameEnvironment {
     struct dc_fsm_environment common;
     int players;
     int playerSocket[2];
+    int nextUdpDatagram[2];
+    struct sockaddr_in playerUdpSockAddr[2];
+    int udpSockAddrLen[2];
+    int playerUdpSocket[2];
     int* board;
     int gameType;
     int result;
