@@ -2,6 +2,7 @@ package com.example.comp3980finalproject;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -18,6 +19,8 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
 public class MainActivity extends AppCompatActivity {
+    public static Socket socket;
+    public static Socket getSocket() {return socket;}
 
     private String hostIP = null;
     private int port = -1;
@@ -39,10 +42,9 @@ public class MainActivity extends AppCompatActivity {
         Connection conn = new Connection(port, hostIP);
         conn.connect();
 
-        while (conn.getState() != Connection.State.END) {
-            conn.execute();
-        }
-
-        Log.d("state", "ending");
+        Intent i = new Intent(this, RPSActivity.class);
+        i.putExtra(getResources().getString(R.string.connKey), conn);
+        i.putExtra(getResources().getString(R.string.ipKey), hostIP);
+        startActivity(i);
     }
 }
