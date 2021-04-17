@@ -35,8 +35,9 @@ public class RequestData {
         this.payload = payload;
     }
 
-    public void set_uid(byte[] uidArr) {
+    public byte[] get_uid() { return uid; }
 
+    public void set_uid(byte[] uidArr) {
         for (int i = 0; i < uidArr.length; i++) {
             uid[i] = uidArr[i];
         }
