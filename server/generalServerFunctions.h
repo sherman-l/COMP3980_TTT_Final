@@ -210,8 +210,6 @@ GameEnvironment* createGameEnvironment(int gameType){
 void validateGameId(uint8_t gameId, uint8_t *response, int* gameType) {
     int index = 0;
     while(SupportedGames[index].id != 0) {
-        printf("\nAt index: %d, %d\n", index, SupportedGames[index].id);
-        printf("gameId: %d\n", gameId);
         if(gameId == SupportedGames[index].id) {
             *response = (uint8_t) SUCCESS_CODE;
             *gameType = SupportedGames[index].id;
@@ -225,9 +223,6 @@ void validateGameId(uint8_t gameId, uint8_t *response, int* gameType) {
 
 
 void confirmRuleset(SocketEnvironment *socketEnv) {
-    for (int i = 0; i < socketEnv->byteCount; i++) {
-        printf("packet index: %d, value: %d\n", i, *socketEnv->packet[i]);
-    }
     uint8_t** response = malloc(sizeof(uint8_t*) * 10);
     for(int i = 0; i < 7; i++) {
         response[i] = malloc(sizeof(uint8_t) * 3);
@@ -237,7 +232,6 @@ void confirmRuleset(SocketEnvironment *socketEnv) {
     if (*response[0] == SUCCESS_CODE) {
         socketEnv->gameType = gameType;
     }
-    printf("response[0] : %d\n", *response[0]);
     *response[1] = 1;
     *response[2] = 4;
     for(int i = 3; i < 6; i++){

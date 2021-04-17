@@ -56,7 +56,6 @@ int max(int x, int y)
 }
 
 SocketEnvironment* createSocketEnvironment(int fd) {
-    printf("inside createSocketEnvironment\n");
     SocketEnvironment* socketEnvironment = malloc(sizeof(struct SocketEnvironment));
     socketEnvironment->fd = fd;
     socketEnvironment->byteCount = 0;
@@ -88,14 +87,12 @@ void fillOptions(SocketEnvironment *socketEnv) {
 }
 
 void storeData(SocketEnvironment *socketEnv, uint8_t *data) {
- //   printf("Beginning of storeData: %d, ByteCount: %d\n", *data, socketEnv->byteCount);
     int numBytes = socketEnv->byteCount;
     int maxLength = (socketEnv->packetOptions.payloadLength == 0) ?
             PAYLOAD_LENGTH_INDEX + 2
             : PAYLOAD_LENGTH_INDEX + socketEnv->packetOptions.payloadLength + 1;
     if (socketEnv->byteCount < maxLength) {
         *socketEnv->packet[numBytes] = *data;
-        printf("In storeData, storing: %d\n", *socketEnv->packet[numBytes]);
         (socketEnv->byteCount)++;
     }
 
@@ -111,10 +108,8 @@ void storeData(SocketEnvironment *socketEnv, uint8_t *data) {
 
 
 SocketEnvironment* getAddressBookEntry(int fd) {
-    printf("inside getAddressBook\n");
     for(int i = 0; i < serverConnections; i++) {
         if(addressBook[i]->fd == fd) {
-            printf("gameEnvironment found for fd: %d", fd);
             return addressBook[i];
         }
     }

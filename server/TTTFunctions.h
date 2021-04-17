@@ -16,7 +16,6 @@ void TTTnotifyOpponentMove(SocketEnvironment* sockEnv);
 void TTTnotifyEnd(SocketEnvironment* sockEnv);
 
 bool TTTMakeMove(SocketEnvironment* sockEnv) {
-    printf("In TTT MakeMove\n");
     int move = *sockEnv->packet[TTT_MOVE_INDEX];
     if(sockEnv->gameEnvironment->board[move] == -1) {
         sockEnv->gameEnvironment->board[move] = (sockEnv->gameEnvironment->playerSocket[PLAYERONE] == sockEnv->fd) ?
